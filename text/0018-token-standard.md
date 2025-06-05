@@ -62,7 +62,6 @@ pub trait CEP18Interface {
     /// The `recipient` is the address of the account that will receive the tokens.
     /// The `amount` is the number of tokens to transfer.
     /// The transfer should fail:
-    /// - if the caller does not have enough tokens,
     /// - if the recipient is the owner itself,
     /// - if the owner does not have enough tokens,
     /// - if the caller does not have enough allowance.
