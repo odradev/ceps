@@ -13,9 +13,9 @@ which every member points back at its registry.
 
 Membership is verified from both sides: the registry adds a contract only after calling the
 contract's `get_dapp_registry` entry point and receiving its own address back. A contract belongs
-to at most one dapp. A member registered as a **registrar** may add other contracts, so a dapp
-that creates contracts through a factory registers them at runtime without a signature from the
-owner. All data lives in one dictionary under the `__dapp` named key, every item a whole value,
+to at most one dapp. A member registered as a **registrar** may add other contracts without a
+signature from the owner, for example a contract that creates contracts through a factory. All
+data lives in one dictionary under the `__dapp` named key, every item a whole value,
 so explorers, wallets and indexers read it from global state without calling the contracts.
 
 The standard fixes the entry points, the storage layout, the events and the error codes, and
@@ -35,9 +35,9 @@ A one-sided, self-declared list would not do. A phishing dapp could list the rea
 "its" contracts, and a scam token could claim to be part of a known dapp. The standard therefore
 requires a link both parties agreed to, and checks it when the link is made.
 
-Many dapps create contracts at runtime through factories ([CEP-86](0086-factory-pattern.md)). The
-owner cannot sign a registration for each of them, so the registry can delegate the right to add
-contracts to selected members.
+The owner cannot always sign every registration: a dapp may create contracts at runtime through
+factories ([CEP-86](0086-factory-pattern.md)), or let a governance contract manage the set. The
+registry can therefore delegate the right to add contracts to selected members.
 
 Finally, tools should answer "which dapp does this contract belong to?" from global state, the way
 they read the `balances` of a CEP-18 token, so the storage layout is part of the standard.
@@ -53,7 +53,7 @@ The standard uses four terms:
   list of its contracts, and it is itself a member of the dapp.
 - A **member** (a *dapp contract*) is a contract that belongs to a dapp. It stores the address of
   its registry and exposes it through `get_dapp_registry`.
-- A **registrar** is a member that may add other members, typically a contract that creates
+- A **registrar** is a member that may add other members, for example a contract that creates
   contracts through a factory.
 
 The examples use the reference implementation: `OwnedDappRegistry` is a ready-to-deploy registry
@@ -107,8 +107,9 @@ A contract that points elsewhere is rejected with `DappRegistryMismatch`, and an
 
 ### Contracts created by a factory
 
-A contract that spawns other contracts is added with `is_registrar = true`. It then passes its
-registry address to every contract it creates and adds it:
+A registrar is any member the owner trusts to add contracts. A common one is a contract that
+spawns other contracts: added with `is_registrar = true`, it passes its registry address to every
+contract it creates and adds it:
 
 ```rust
 /// The spawner must be registered in the dapp as a registrar.
@@ -263,9 +264,10 @@ registrar, and what a registrar may add, is decided by the authorization policy.
 implementation a registrar may add contracts that are not registrars, so a compromised registrar
 cannot delegate further.
 
-A registrar registers a contract in two steps of its own code: it creates the contract and passes
-it the registry address, then it calls `add_dapp_contract(new_contract, false)`. The registry sees
-the registrar as the caller and records it in the `registrar` field of `DappContractAdded`.
+A registrar adds a contract by calling `add_dapp_contract(contract, false)`. The contract must
+already point to the registry, so a registrar that creates contracts passes them the registry
+address first. The registry sees the registrar as the caller and records it in the `registrar`
+field of `DappContractAdded`.
 
 ### Authorization
 
@@ -424,9 +426,9 @@ Odra 2.10 ships the standard as `odra_modules::dapp`
 - **Whole lists, not indexed items.** A `contracts_length` plus `contracts_0..n` layout scales
   further but needs `n + 1` reads in every tool. Dapps are small in practice; pagination is left
   to an extension.
-- **Registrars, not a factory as owner.** The owner is the governance key; a spawner is a
-  contract. A narrow right (add, but not registrars, and not remove) limits what a bug in it can
-  do.
+- **Registrars, not more owners.** The owner is the governance key; a registrar is a contract
+  trusted only to add. A narrow right (add, but not registrars, and not remove) limits what a bug
+  in it can do.
 - **The registry is a member of its own dapp.** Tools treat all contracts uniformly, and the
   registry can carry the dapp's CEP-96 metadata.
 - **Names prefixed with `dapp`.** The registry and member interfaces are meant to be embedded in
@@ -451,7 +453,7 @@ Not doing this leaves every explorer and wallet with its own off-chain grouping,
 - [CEP-96 Contract Metadata](0096-contract-metadata.md) describes one contract with named keys
   that tools read by name. This standard extends the idea to a set of contracts and adds
   verification; the two compose.
-- [CEP-86 Factory Pattern](0086-factory-pattern.md) is why registrars exist.
+- [CEP-86 Factory Pattern](0086-factory-pattern.md) is the main use of registrars.
 - [CEP-18](0018-token-standard.md) established reading `name`, `symbol` and `balances` from named
   keys and dictionaries instead of calling entry points.
 - The [Casper Event Standard](https://github.com/make-software/casper-event-standard) introduced
