@@ -436,11 +436,18 @@ Odra 2.10 ships the standard as `odra_modules::dapp`
   the prefix, and the storage items are scoped by the `__dapp` dictionary instead of by name.
 - **Authorization left open.** Fixing `Ownable` would exclude dapps governed by roles or a DAO,
   and tools do not depend on the policy.
-- **Metadata as one struct, empty string for unset.** The fields change together and rarely.
-  `Option` fields as in CEP-96 were considered; tools handle an empty string the same way.
+- **Metadata as one struct, empty string for unset.** The fields change together and rarely, and
+  the struct is also what `get_dapp_metadata` returns. Four separate `String` arguments were
+  considered for clients that do not read contract schemas; the schema describes the struct, and
+  a hand-built argument is four length-prefixed strings. `Option` fields as in CEP-96 were
+  considered too; tools handle an empty string the same way.
 - **Discarded: calling registrars "factories".** The right is about who may add, not how
   contracts are created; a spawner that calls a factory holds it, the factory does not.
 - **Discarded: self-registration.** A contract adding itself would let anyone spam a dapp.
+- **Discarded: clearing the member's pointer on removal.** The registry would have to call back
+  into the member, which would need an open entry point to reset its registry. Removal is the
+  registry's decision alone; the member keeps its pointer, and tools decide membership from the
+  registry's list.
 - **Discarded: a global dapp directory contract.** It needs an authority to curate it. Per-dapp
   registries need none, and a directory can index them later.
 
@@ -470,12 +477,9 @@ Not doing this leaves every explorer and wallet with its own off-chain grouping,
 
 [unresolved-questions]: #unresolved-questions
 
-- Should `set_dapp_metadata` take four `String` arguments instead of one `Any` value, for clients
-  that do not consume contract schemas?
-- Should metadata fields be `Option<String>` as in CEP-96, instead of empty strings?
-- Should the standard define a paginated variant of `contracts`, or is that a separate extension?
-- Should removing a member also clear the member's `registry` item through a callback? Today the
-  member keeps pointing to the registry and tools rely on the registry's list.
+None at the time of writing. The interface is implemented and released in Odra 2.10; the design
+questions raised while drafting, and how they were settled, are recorded under
+[Rationale and alternatives](#rationale-and-alternatives).
 
 ## Future possibilities
 
